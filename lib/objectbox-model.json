@@ -1,0 +1,299 @@
+{
+  "_note1": "KEEP THIS FILE! Check it into a version control system (VCS) like git.",
+  "_note2": "ObjectBox manages crucial IDs for your object model. See docs for details.",
+  "_note3": "If you have VCS merge conflicts, you must resolve them according to ObjectBox docs.",
+  "entities": [
+    {
+      "id": "1:366825482473197346",
+      "lastPropertyId": "6:2261123445691697927",
+      "name": "ProblemSession",
+      "properties": [
+        {
+          "id": "1:4735691665954168556",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:6710728561017930202",
+          "name": "when",
+          "type": 10
+        },
+        {
+          "id": "3:3269107163824465070",
+          "name": "problemsAttempted",
+          "type": 6
+        },
+        {
+          "id": "4:4431071603957482579",
+          "name": "problemsCorrect",
+          "type": 6
+        },
+        {
+          "id": "5:7763776198837779075",
+          "name": "durationSeconds",
+          "type": 6
+        },
+        {
+          "id": "6:2261123445691697927",
+          "name": "applied",
+          "type": 1
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "2:7094780164835745055",
+      "lastPropertyId": "6:1667718374968852744",
+      "name": "Rank",
+      "properties": [
+        {
+          "id": "1:3239770133951192813",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:272578517288451752",
+          "name": "requiredRating",
+          "type": 6
+        },
+        {
+          "id": "3:7293219903194428499",
+          "name": "name",
+          "type": 9
+        },
+        {
+          "id": "4:4010249560439960871",
+          "name": "description",
+          "type": 9
+        },
+        {
+          "id": "5:20030224557216871",
+          "name": "color",
+          "type": 9
+        },
+        {
+          "id": "6:1667718374968852744",
+          "name": "glow",
+          "type": 1
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "3:4567488810618649915",
+      "lastPropertyId": "3:6132561407344725141",
+      "name": "RatingLog",
+      "properties": [
+        {
+          "id": "1:5969807981884091256",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:5089446410036113493",
+          "name": "when",
+          "type": 10
+        },
+        {
+          "id": "3:6132561407344725141",
+          "name": "rating",
+          "type": 6
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "4:8345632103666706116",
+      "lastPropertyId": "4:1104375139533381613",
+      "name": "StudySession",
+      "properties": [
+        {
+          "id": "1:2917271487245072123",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:2893982099169393584",
+          "name": "when",
+          "type": 10
+        },
+        {
+          "id": "3:3484483473479774833",
+          "name": "units",
+          "type": 8
+        },
+        {
+          "id": "4:1104375139533381613",
+          "name": "applied",
+          "type": 1
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "5:8905902313295055085",
+      "lastPropertyId": "23:1266431586907194696",
+      "name": "Subject",
+      "properties": [
+        {
+          "id": "1:1641788822954693886",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:7367391195579831963",
+          "name": "name",
+          "type": 9
+        },
+        {
+          "id": "3:4995597120482307639",
+          "name": "description",
+          "type": 9
+        },
+        {
+          "id": "4:5358957923620643222",
+          "name": "baseRating",
+          "type": 6
+        },
+        {
+          "id": "5:2905030494009256739",
+          "name": "maxRating",
+          "type": 6
+        },
+        {
+          "id": "6:125237889065161106",
+          "name": "studyEnabled",
+          "type": 1
+        },
+        {
+          "id": "7:8608689291578866089",
+          "name": "problemEnabled",
+          "type": 1
+        },
+        {
+          "id": "8:6539711577988690747",
+          "name": "unitName",
+          "type": 9
+        },
+        {
+          "id": "9:4547897871064208977",
+          "name": "studyFrequency",
+          "type": 6
+        },
+        {
+          "id": "10:9019557869852769136",
+          "name": "studyGoalMin",
+          "type": 6
+        },
+        {
+          "id": "11:389280064125562351",
+          "name": "studyGoalMax",
+          "type": 6
+        },
+        {
+          "id": "12:1391290167251000580",
+          "name": "studyStreak",
+          "type": 6
+        },
+        {
+          "id": "13:9147452912585933975",
+          "name": "studyRating",
+          "type": 6
+        },
+        {
+          "id": "14:6656332178807277140",
+          "name": "lastProcessedStudy",
+          "type": 10
+        },
+        {
+          "id": "15:7736487060319348783",
+          "name": "studyRatingConstant",
+          "type": 8
+        },
+        {
+          "id": "16:3346237924023271205",
+          "name": "problemFrequency",
+          "type": 6
+        },
+        {
+          "id": "17:3431112641188439336",
+          "name": "problemGoalMin",
+          "type": 6
+        },
+        {
+          "id": "18:2832726576951033153",
+          "name": "problemGoalMax",
+          "type": 6
+        },
+        {
+          "id": "19:7664820229115763599",
+          "name": "problemStreak",
+          "type": 6
+        },
+        {
+          "id": "20:7101562800989189418",
+          "name": "problemTimeGoal",
+          "type": 6
+        },
+        {
+          "id": "21:3757106475897802813",
+          "name": "problemRating",
+          "type": 6
+        },
+        {
+          "id": "22:981701768054789967",
+          "name": "lastProcessedProblems",
+          "type": 10
+        },
+        {
+          "id": "23:1266431586907194696",
+          "name": "problemRatingConstant",
+          "type": 8
+        }
+      ],
+      "relations": [
+        {
+          "id": "1:543803747439561709",
+          "name": "ranks",
+          "targetId": "2:7094780164835745055"
+        },
+        {
+          "id": "2:2316260334328942325",
+          "name": "studySessions",
+          "targetId": "4:8345632103666706116"
+        },
+        {
+          "id": "3:6885515309030317027",
+          "name": "problemSessions",
+          "targetId": "1:366825482473197346"
+        },
+        {
+          "id": "4:233696712762759455",
+          "name": "studyRatingHistory",
+          "targetId": "3:4567488810618649915"
+        },
+        {
+          "id": "5:5784388862592702465",
+          "name": "problemRatingHistory",
+          "targetId": "3:4567488810618649915"
+        }
+      ]
+    }
+  ],
+  "lastEntityId": "5:8905902313295055085",
+  "lastIndexId": "0:0",
+  "lastRelationId": "5:5784388862592702465",
+  "lastSequenceId": "0:0",
+  "modelVersion": 5,
+  "modelVersionParserMinimum": 5,
+  "retiredEntityUids": [],
+  "retiredIndexUids": [],
+  "retiredPropertyUids": [],
+  "retiredRelationUids": [],
+  "version": 1
+}
