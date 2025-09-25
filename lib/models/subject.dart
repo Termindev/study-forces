@@ -269,14 +269,12 @@ class Subject {
           final loss = studyRating - newRating;
           // Ensure minimum loss of 1 point
           studyRating = newRating - max(0, 1 - loss);
-          print(
-            'Study Rating Decay: daysWithoutStreak=$daysWithoutStreak, sMinus=$sMinus%, loss=$loss, rating: ${studyRating + loss} -> $studyRating',
-          );
+          // Apply rating decay for missed study days
         }
         studyStreak = min(-1, studyStreak - 1);
       }
 
-      studyRating = studyRating.clamp(baseRating, maxRating);
+      studyRating = studyRating.clamp(baseRating, 999999999);
       studyRatingHistory.add(
         RatingLog.create(when: windowEnd, rating: studyRating),
       );
@@ -394,7 +392,7 @@ class Subject {
         problemStreak = min(-1, problemStreak - 1);
       }
 
-      problemRating = problemRating.clamp(baseRating, maxRating);
+      problemRating = problemRating.clamp(baseRating, 999999999);
       problemRatingHistory.add(
         RatingLog.create(when: windowEnd, rating: problemRating),
       );

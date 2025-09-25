@@ -5,6 +5,8 @@ import '../models/subject.dart';
 import '../models/problem_session.dart';
 import 'add_problem_session.dart';
 import 'select_subject_for_problem.dart';
+import '../components/session/session_list_item.dart';
+import '../constants/app_constants.dart';
 
 class ProblemSolvingPage extends StatefulWidget {
   const ProblemSolvingPage({super.key});
@@ -85,7 +87,9 @@ class _ProblemSolvingPageState extends State<ProblemSolvingPage> {
 
         return Scaffold(
           body: ListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(
+              vertical: AppConstants.spacingS,
+            ),
             itemCount: groupedSessions.length,
             itemBuilder: (context, index) {
               final dateKey = groupedSessions.keys.elementAt(index);
@@ -97,14 +101,14 @@ class _ProblemSolvingPageState extends State<ProblemSolvingPage> {
                 children: [
                   // Date header
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppConstants.spacingM,
+                      vertical: AppConstants.spacingS,
+                    ),
                     child: Text(
                       dateKey,
                       style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).primaryColor,
-                          ),
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
                   ),
 
@@ -143,70 +147,69 @@ class _ProblemSolvingPageState extends State<ProblemSolvingPage> {
     final subject = entry.key;
     final session = entry.value;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: session.applied
-              ? Colors.green.withOpacity(0.2)
-              : Colors.orange.withOpacity(0.2),
-          child: Icon(
-            session.applied ? Icons.check : Icons.schedule,
-            color: session.applied ? Colors.green : Colors.orange,
+    return SessionListItem(
+      session: session,
+      isStudySession: false,
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AddProblemSessionPage(
+              subjectId: subject.id,
+              existingSession: session,
+            ),
           ),
-        ),
-        title: Text(
-          subject.name,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '${session.problemsAttempted} attempted, ${session.problemsCorrect} correct',
+        );
+      },
+      onEdit: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AddProblemSessionPage(
+              subjectId: subject.id,
+              existingSession: session,
             ),
-            Text(
-              '${_formatDuration(session.durationSeconds)} • ${_formatTime(session.when)}',
-              style: Theme.of(context).textTheme.bodySmall,
+          ),
+        );
+      },
+      onDelete: () async {
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Delete Problem Session'),
+            content: Text(
+              'Are you sure you want to delete this problem session from ${subject.name}?',
             ),
-            if (session.applied)
-              Text(
-                'Processed',
-                style: TextStyle(
-                  color: Colors.green,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
               ),
-          ],
-        ),
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) =>
-              _handleMenuAction(context, store, subject, session, value),
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'edit',
-              child: Row(
-                children: [
-                  Icon(Icons.edit, size: 20),
-                  SizedBox(width: 8),
-                  Text('Edit'),
-                ],
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Delete'),
               ),
-            ),
-            const PopupMenuItem(
-              value: 'delete',
-              child: Row(
-                children: [
-                  Icon(Icons.delete, size: 20, color: Colors.red),
-                  SizedBox(width: 8),
-                  Text('Delete', style: TextStyle(color: Colors.red)),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+            ],
+          ),
+        );
+
+        if (confirmed == true) {
+          try {
+            await store.deleteProblemSessionSmart(subject.id, session.id);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Problem session deleted')),
+              );
+            }
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Failed to delete session: $e')),
+              );
+            }
+          }
+        }
+      },
     );
   }
 

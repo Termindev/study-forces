@@ -117,7 +117,7 @@ class SubjectCard extends StatelessWidget {
                 children: [
                   // Subject name at the top
                   Text(
-                    subject.name,
+                    subject.name.isEmpty ? 'Unnamed Subject' : subject.name,
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: shouldGlow ? color : null,

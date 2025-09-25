@@ -77,9 +77,7 @@ class _SubjectPageState extends State<SubjectPage> {
     } else {
       problemStartDate = now.subtract(Duration(days: subject.problemFrequency));
     }
-    print(studyStartDate);
-    print(now);
-    print(subject.lastProcessedStudy);
+    // Calculate performance metrics
     final studyPerformance = subject.studyEnabled
         ? subject.getStudyPerformance(studyStartDate, now)
         : 0;

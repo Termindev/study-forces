@@ -21,27 +21,9 @@ class DataExportService {
       final subjects = objectBox.subjectBox.getAll();
       final ranks = objectBox.rankBox.getAll();
 
-      // Explicitly load sessions for each subject to ensure they're available
-      for (final subject in subjects) {
-        // Force load the ToMany relationships
-        subject.studySessions.load();
-        subject.problemSessions.load();
-        subject.ranks.load();
-        subject.studyRatingHistory.load();
-        subject.problemRatingHistory.load();
-      }
+      // ToMany relationships are automatically loaded when accessed
 
-      print('Exporting ${subjects.length} subjects');
-      for (final subject in subjects) {
-        print('Subject: ${subject.name}');
-        print('  Study sessions: ${subject.studySessions.length}');
-        print('  Problem sessions: ${subject.problemSessions.length}');
-        print('  Ranks: ${subject.ranks.length}');
-        print('  Study rating history: ${subject.studyRatingHistory.length}');
-        print(
-          '  Problem rating history: ${subject.problemRatingHistory.length}',
-        );
-      }
+      // Exporting subjects with their embedded data
 
       // Create export data structure
       final exportData = {
@@ -58,23 +40,7 @@ class DataExportService {
       final jsonString = const JsonEncoder.withIndent('  ').convert(exportData);
       final jsonBytes = Uint8List.fromList(utf8.encode(jsonString));
 
-      // Debug: Print first subject's sessions to verify they're in the JSON
-      if (subjects.isNotEmpty) {
-        final firstSubject = subjects.first;
-        print('DEBUG - First subject in JSON:');
-        print('  Name: ${firstSubject.name}');
-        final subjectsData =
-            (exportData['data'] as Map<String, dynamic>?)?['subjects'] as List?;
-        if (subjectsData != null && subjectsData.isNotEmpty) {
-          final firstSubjectData = subjectsData[0] as Map<String, dynamic>?;
-          print(
-            '  Study sessions in JSON: ${(firstSubjectData?['studySessions'] as List?)?.length ?? 'null'}',
-          );
-          print(
-            '  Problem sessions in JSON: ${(firstSubjectData?['problemSessions'] as List?)?.length ?? 'null'}',
-          );
-        }
-      }
+      // Sessions are embedded within each subject's JSON data
 
       // Generate suggested filename
       final now = DateTime.now();
@@ -91,10 +57,8 @@ class DataExportService {
       );
 
       if (outputFile != null) {
-        print("File saved to: $outputFile");
         return outputFile;
       } else {
-        print("Save canceled by user");
         return null;
       }
     } catch (e) {
@@ -135,16 +99,7 @@ class DataExportService {
 
       // Import subjects with their embedded sessions and relationships
       if (data['data']['subjects'] != null) {
-        print('Importing ${data['data']['subjects'].length} subjects');
         for (final subjectData in data['data']['subjects']) {
-          print('Importing subject: ${subjectData['name']}');
-          print(
-            '  Study sessions in import data: ${subjectData['studySessions']?.length ?? 'null'}',
-          );
-          print(
-            '  Problem sessions in import data: ${subjectData['problemSessions']?.length ?? 'null'}',
-          );
-
           final subject = _subjectFromJson(subjectData, {});
           subject.id = 0; // Let ObjectBox assign new ID
 
@@ -176,13 +131,6 @@ class DataExportService {
             log.id = 0; // Let ObjectBox assign new ID
             objectBox.ratingLogBox.put(log);
           }
-
-          print(
-            '  After import - Study sessions: ${subject.studySessions.length}',
-          );
-          print(
-            '  After import - Problem sessions: ${subject.problemSessions.length}',
-          );
         }
       }
     } catch (e) {

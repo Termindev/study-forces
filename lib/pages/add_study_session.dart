@@ -77,18 +77,25 @@ class _AddStudySessionPageState extends State<AddStudySessionPage> {
     setState(() => _saving = true);
     try {
       if (widget.existingSession != null) {
-        // Editing existing session
-        final updatedSession = StudySession.create(
-          units: units,
-          when: _selectedDateTime,
-          applied: widget.existingSession!.applied,
+        // Editing existing session - modify the existing session directly
+        final existingSession = widget.existingSession!;
+        print('DEBUG: Editing study session ${existingSession.id}');
+        print(
+          'DEBUG: Before - units: ${existingSession.units}, when: ${existingSession.when}',
         );
-        updatedSession.id = widget.existingSession!.id; // Preserve the ID
+
+        existingSession.units = units;
+        existingSession.when = _selectedDateTime;
+        // Keep the existing applied status
+
+        print(
+          'DEBUG: After - units: ${existingSession.units}, when: ${existingSession.when}',
+        );
 
         await store.editStudySessionSmartWithDateCheck(
           widget.subject.id,
-          widget.existingSession!.id,
-          updatedSession,
+          existingSession.id,
+          existingSession,
         );
 
         ScaffoldMessenger.of(
@@ -231,7 +238,11 @@ class _AddStudySessionPageState extends State<AddStudySessionPage> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text('Add Session'),
+                          : Text(
+                              widget.existingSession != null
+                                  ? 'Edit Session'
+                                  : 'Add Session',
+                            ),
                     ),
                   ),
                 ],

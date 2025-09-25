@@ -9,6 +9,8 @@ import '../models/problem_session.dart';
 
 class SubjectStore extends ChangeNotifier {
   late final Box<Subject> subjectBox;
+  late final Box<ProblemSession> problemSessionBox;
+  late final Box<StudySession> studySessionBox;
   List<Subject> subjects = [];
   bool loading = true;
   String? error;
@@ -17,12 +19,34 @@ class SubjectStore extends ChangeNotifier {
 
   SubjectStore(ObjectBox objectBox) {
     subjectBox = objectBox.subjectBox;
+    problemSessionBox = objectBox.problemSessionBox;
+    studySessionBox = objectBox.studySessionBox;
     _init();
   }
 
   void _init() {
     // Load initial data
     subjects = subjectBox.getAll();
+    print('DEBUG: Loaded ${subjects.length} subjects from database');
+    
+    // Fix any subjects with empty names
+    bool needsUpdate = false;
+    for (int i = 0; i < subjects.length; i++) {
+      print(
+        'DEBUG: Subject $i: name="${subjects[i].name}", id=${subjects[i].id}',
+      );
+      if (subjects[i].name.isEmpty) {
+        print('DEBUG: Fixing empty name for subject ${subjects[i].id}');
+        subjects[i].name = 'Subject ${subjects[i].id}';
+        needsUpdate = true;
+      }
+    }
+    
+    if (needsUpdate) {
+      print('DEBUG: Updating subjects with fixed names');
+      subjectBox.putMany(subjects);
+    }
+    
     loading = false;
     notifyListeners();
 
@@ -30,6 +54,14 @@ class SubjectStore extends ChangeNotifier {
     final query = subjectBox.query().watch();
     _subs = query.listen((event) {
       subjects = event.find();
+      print(
+        'DEBUG: Query listener updated subjects: ${subjects.length} subjects',
+      );
+      for (int i = 0; i < subjects.length; i++) {
+        print(
+          'DEBUG: Updated subject $i: name="${subjects[i].name}", id=${subjects[i].id}',
+        );
+      }
       notifyListeners();
     });
   }
@@ -51,9 +83,11 @@ class SubjectStore extends ChangeNotifier {
   // ---------------- Subjects ----------------
   Future<int> addSubject(Subject subject) async {
     try {
+      print('DEBUG: Adding subject with name: "${subject.name}"');
       loading = true;
       notifyListeners();
       final id = subjectBox.put(subject);
+      print('DEBUG: Subject saved with ID: $id');
       return id;
     } catch (e) {
       error = e.toString();
@@ -542,29 +576,42 @@ class SubjectStore extends ChangeNotifier {
     StudySession updated,
   ) async {
     try {
+      print('DEBUG: editStudySessionSmartWithDateCheck called with sessionId: $sessionId');
       final subject = subjectBox.get(subjectId);
       if (subject == null) throw StateError('Subject not found');
 
       // Verify session exists
-      subject.studySessions.firstWhere(
+      final existingSession = subject.studySessions.firstWhere(
         (s) => s.id == sessionId,
         orElse: () => throw StateError('Study session not found'),
       );
+      print('DEBUG: Found existing study session: ${existingSession.toString()}');
 
       // Check if the new date falls within already processed ranges
       if (_shouldReprocessStudyFromDate(subject, updated.when)) {
+        print('DEBUG: Reprocessing study from date ${updated.when}');
         // Update the session
         final idx = subject.studySessions.indexWhere((s) => s.id == sessionId);
+        print('DEBUG: Updating study session at index $idx');
         subject.studySessions[idx] = updated;
         // Then reset and recalculate everything
         subject.resetAndRecalculateStudyFromDate(updated.when);
       } else {
+        print('DEBUG: Normal study edit - no reprocessing needed');
         // Normal edit - just update the session
         final idx = subject.studySessions.indexWhere((s) => s.id == sessionId);
+        print('DEBUG: Updating study session at index $idx');
         subject.studySessions[idx] = updated;
       }
 
+      print('DEBUG: Saving subject to database');
       subjectBox.put(subject);
+      
+      // Also save the updated session to its own box to ensure it's persisted
+      final updatedSession = subject.studySessions.firstWhere((s) => s.id == sessionId);
+      print('DEBUG: Saving updated study session to study session box: ${updatedSession.toString()}');
+      studySessionBox.put(updatedSession);
+      
       notifyListeners();
 
       return subject;
@@ -580,33 +627,52 @@ class SubjectStore extends ChangeNotifier {
     ProblemSession updated,
   ) async {
     try {
+      print(
+        'DEBUG: editProblemSessionSmartWithDateCheck called with sessionId: $sessionId',
+      );
       final subject = subjectBox.get(subjectId);
       if (subject == null) throw StateError('Subject not found');
 
       // Verify session exists
-      subject.problemSessions.firstWhere(
+      final existingSession = subject.problemSessions.firstWhere(
         (p) => p.id == sessionId,
         orElse: () => throw StateError('Problem session not found'),
       );
+      print('DEBUG: Found existing session: ${existingSession.toString()}');
 
       // Check if the new date falls within already processed ranges
       if (_shouldReprocessProblemFromDate(subject, updated.when)) {
+        print('DEBUG: Reprocessing from date ${updated.when}');
         // Update the session
         final idx = subject.problemSessions.indexWhere(
           (p) => p.id == sessionId,
         );
+        print('DEBUG: Updating session at index $idx');
         subject.problemSessions[idx] = updated;
         // Then reset and recalculate everything
         subject.resetAndRecalculateProblemFromDate(updated.when);
       } else {
+        print('DEBUG: Normal edit - no reprocessing needed');
         // Normal edit - just update the session
         final idx = subject.problemSessions.indexWhere(
           (p) => p.id == sessionId,
         );
+        print('DEBUG: Updating session at index $idx');
         subject.problemSessions[idx] = updated;
       }
 
+      print('DEBUG: Saving subject to database');
       subjectBox.put(subject);
+
+      // Also save the updated session to its own box to ensure it's persisted
+      final updatedSession = subject.problemSessions.firstWhere(
+        (p) => p.id == sessionId,
+      );
+      print(
+        'DEBUG: Saving updated session to problem session box: ${updatedSession.toString()}',
+      );
+      problemSessionBox.put(updatedSession);
+
       notifyListeners();
 
       return subject;

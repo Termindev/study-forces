@@ -7,6 +7,28 @@ import '../constants/app_constants.dart';
 import '../components/common/form_field_wrapper.dart';
 // Timer feature removed
 
+class DecimalTextInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    // Allow empty string
+    if (newValue.text.isEmpty) {
+      return newValue;
+    }
+
+    // Check if the new value is a valid decimal number
+    final regex = RegExp(r'^\d*\.?\d*$');
+    if (regex.hasMatch(newValue.text)) {
+      return newValue;
+    }
+
+    // If not valid, return the old value
+    return oldValue;
+  }
+}
+
 class AddProblemSessionPage extends StatefulWidget {
   final int subjectId;
   final ProblemSession? existingSession;
@@ -73,6 +95,21 @@ class _AddProblemSessionPageState extends State<AddProblemSessionPage> {
     return null;
   }
 
+  // Validator for duration (allows decimal values)
+  String? _requiredDurationValidator(String? value, String fieldName) {
+    if (value == null || value.isEmpty) {
+      return '$fieldName is required';
+    }
+    final numValue = double.tryParse(value);
+    if (numValue == null) {
+      return '$fieldName must be a number';
+    }
+    if (numValue < 0) {
+      return '$fieldName must be non-negative';
+    }
+    return null;
+  }
+
   // Validator for problems correct (must be <= problems attempted)
   String? _problemsCorrectValidator(String? value) {
     if (value == null || value.isEmpty) {
@@ -126,7 +163,7 @@ class _AddProblemSessionPageState extends State<AddProblemSessionPage> {
 
       final problemsAttempted = int.tryParse(problemsAttemptedText);
       final problemsCorrect = int.tryParse(problemsCorrectText);
-      final durationMinutes = int.tryParse(durationMinutesText);
+      final durationMinutes = double.tryParse(durationMinutesText);
 
       // Validate parsed values
       if (problemsAttempted == null) {
@@ -147,20 +184,28 @@ class _AddProblemSessionPageState extends State<AddProblemSessionPage> {
       );
 
       if (widget.existingSession != null) {
-        // Editing existing session
-        final updatedSession = ProblemSession.create(
-          when: sessionDateTime,
-          problemsAttempted: problemsAttempted,
-          problemsCorrect: problemsCorrect,
-          durationSeconds: durationMinutes * 60, // Convert minutes to seconds
-          applied: widget.existingSession!.applied,
+        // Editing existing session - modify the existing session directly
+        final existingSession = widget.existingSession!;
+        print('DEBUG: Editing problem session ${existingSession.id}');
+        print(
+          'DEBUG: Before - attempted: ${existingSession.problemsAttempted}, correct: ${existingSession.problemsCorrect}, duration: ${existingSession.durationSeconds}',
         );
-        updatedSession.id = widget.existingSession!.id; // Preserve the ID
+
+        existingSession.when = sessionDateTime;
+        existingSession.problemsAttempted = problemsAttempted;
+        existingSession.problemsCorrect = problemsCorrect;
+        existingSession.durationSeconds = (durationMinutes * 60)
+            .round(); // Convert minutes to seconds
+        // Keep the existing applied status
+
+        print(
+          'DEBUG: After - attempted: ${existingSession.problemsAttempted}, correct: ${existingSession.problemsCorrect}, duration: ${existingSession.durationSeconds}',
+        );
 
         await store.editProblemSessionSmartWithDateCheck(
           widget.subjectId,
-          widget.existingSession!.id,
-          updatedSession,
+          existingSession.id,
+          existingSession,
         );
 
         if (mounted) {
@@ -174,7 +219,8 @@ class _AddProblemSessionPageState extends State<AddProblemSessionPage> {
           when: sessionDateTime,
           problemsAttempted: problemsAttempted,
           problemsCorrect: problemsCorrect,
-          durationSeconds: durationMinutes * 60, // Convert minutes to seconds
+          durationSeconds: (durationMinutes * 60)
+              .round(), // Convert minutes to seconds
         );
 
         // Use smart add method that handles date checking automatically
@@ -303,10 +349,12 @@ class _AddProblemSessionPageState extends State<AddProblemSessionPage> {
                     labelText: "Duration (minutes)*",
                     hintText: "How long did the session take?",
                   ),
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  inputFormatters: [DecimalTextInputFormatter()],
                   validator: (value) =>
-                      _requiredNumberValidator(value, "Duration"),
+                      _requiredDurationValidator(value, "Duration"),
                 ),
               ),
               const SizedBox(height: AppConstants.spacingL),

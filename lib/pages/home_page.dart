@@ -72,6 +72,10 @@ class _HomePageState extends State<HomePage> {
               itemCount: store.subjects.length,
               itemBuilder: (context, index) {
                 final subject = store.subjects[index];
+                print('DEBUG: Displaying subject at index $index: name="${subject.name}", id=${subject.id}');
+                if (index == 0) {
+                  print('DEBUG: FIRST SUBJECT - name length: ${subject.name.length}, name bytes: ${subject.name.codeUnits}');
+                }
                 return SubjectCard(
                   subject: subject,
                   onTap: () {

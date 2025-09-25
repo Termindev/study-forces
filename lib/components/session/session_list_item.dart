@@ -109,8 +109,10 @@ class SessionListItem extends StatelessWidget {
                     ),
                   ),
 
-                  // Performance indicator
-                  if (isStudySession)
+                  // Applied status or Performance indicator
+                  if (session.applied)
+                    _buildAppliedIndicator(context)
+                  else if (isStudySession)
                     _buildPerformanceIndicator(
                       context,
                       session.performance,
@@ -225,5 +227,39 @@ class SessionListItem extends StatelessWidget {
     } else {
       return Icons.trending_down;
     }
+  }
+
+  Widget _buildAppliedIndicator(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppConstants.spacingS,
+        vertical: AppConstants.spacingXS,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.green.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(AppConstants.radiusM),
+        border: Border.all(color: Colors.green.withOpacity(0.3), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.check_circle,
+            size: AppConstants.iconS,
+            color: Colors.green,
+          ),
+          const SizedBox(width: AppConstants.spacingXS),
+          Text(
+            'Applied',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: Colors.green,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

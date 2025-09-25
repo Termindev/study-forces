@@ -79,6 +79,7 @@ class _StudySessionsPageState extends State<StudySessionsPage> {
               itemBuilder: (context, index) {
                 final dateKey = groupedSessions.keys.elementAt(index);
                 final sessions = groupedSessions[dateKey]!;
+                final isLastGroup = index == groupedSessions.length - 1;
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -172,6 +173,16 @@ class _StudySessionsPageState extends State<StudySessionsPage> {
                         },
                       );
                     }),
+
+                    if (!isLastGroup) ...[
+                      const SizedBox(height: 16),
+                      Divider(
+                        color: Theme.of(context).dividerColor.withOpacity(0.3),
+                        thickness: 1,
+                      ),
+                      const SizedBox(height: 8),
+                    ] else
+                      const SizedBox(height: 16),
                   ],
                 );
               },

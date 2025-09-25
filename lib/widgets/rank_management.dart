@@ -33,7 +33,7 @@ class _RankManagementWidgetState extends State<RankManagementWidget> {
           name: 'New Rank',
           description: '',
           color:
-              '#FF${Colors.blue.value.toRadixString(16).substring(2).toUpperCase()}',
+              '#FF${Colors.blue.toARGB32().toRadixString(16).substring(2).toUpperCase()}',
           glow: false,
         ),
       );
@@ -88,7 +88,7 @@ class _RankManagementWidgetState extends State<RankManagementWidget> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop(
-                  '#${selectedColor.value.toRadixString(16).toUpperCase()}',
+                  '#${selectedColor.toARGB32().toRadixString(16).toUpperCase()}',
                 );
               },
               child: const Text('Done'),
@@ -266,7 +266,7 @@ class _RankManagementWidgetState extends State<RankManagementWidget> {
                     boxShadow: rank.glow
                         ? [
                             BoxShadow(
-                              color: color.withOpacity(0.5),
+                              color: color.withValues(alpha: 0.5),
                               blurRadius: 8,
                               spreadRadius: 2,
                             ),

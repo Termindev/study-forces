@@ -228,8 +228,10 @@ class _AddSubjectState extends State<AddSubject> {
           : 0;
 
       // Create subject using the constructor
+      final subjectName = _nameController.text.trim();
+      print('DEBUG: Creating subject with name: "$subjectName"');
       final subject = Subject()
-        ..name = _nameController.text.trim()
+        ..name = subjectName.isEmpty ? 'TEST SUBJECT' : subjectName
         ..description = _descController.text
         ..baseRating = baseRating
         ..maxRating = maxRating

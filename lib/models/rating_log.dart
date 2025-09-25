@@ -13,8 +13,6 @@ class RatingLog {
 
   RatingLog();
 
-  RatingLog.create({DateTime? when, int rating = 0}) {
-    this.when = when ?? DateTime.now();
-    this.rating = rating;
-  }
+  RatingLog.create({DateTime? when, this.rating = 0})
+    : when = when ?? DateTime.now();
 }

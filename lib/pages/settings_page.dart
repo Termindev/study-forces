@@ -13,18 +13,15 @@ class SettingsPage extends StatelessWidget {
         children: [
           const Text(
             'Settings',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: AppConstants.spacingL),
-          
+
           // Data Export/Import Section
           const DataExportImportWidget(),
-          
+
           const SizedBox(height: AppConstants.spacingL),
-          
+
           // App Info Section
           Card(
             child: Padding(
@@ -46,9 +43,11 @@ class SettingsPage extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: AppConstants.spacingM),
-                  const Text('StudyForces v1.0.0'),
+                  const Text('StudyForces v1.1.0 beta'),
                   const SizedBox(height: AppConstants.spacingS),
-                  const Text('Track your study progress and problem solving sessions with intelligent rating systems.'),
+                  const Text(
+                    'Track your study progress and problem solving sessions with intelligent rating systems.',
+                  ),
                 ],
               ),
             ),
