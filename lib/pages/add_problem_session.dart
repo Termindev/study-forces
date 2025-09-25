@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../stores/subject_store.dart';
 import '../models/problem_session.dart';
 import '../constants/app_constants.dart';
 import '../components/common/form_field_wrapper.dart';
+// Timer feature removed
 
 class AddProblemSessionPage extends StatefulWidget {
   final int subjectId;
@@ -30,6 +32,7 @@ class _AddProblemSessionPageState extends State<AddProblemSessionPage> {
 
   DateTime _selectedDate = DateTime.now();
   bool _isSubmitting = false;
+  // Timer feature removed
 
   @override
   void initState() {
@@ -104,6 +107,8 @@ class _AddProblemSessionPageState extends State<AddProblemSessionPage> {
     }
   }
 
+  // Timer feature removed
+
   Future<void> _submitForm(BuildContext context) async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -114,10 +119,25 @@ class _AddProblemSessionPageState extends State<AddProblemSessionPage> {
     try {
       final store = Provider.of<SubjectStore>(context, listen: false);
 
-      // Parse input values
-      final problemsAttempted = int.parse(_problemsAttemptedController.text);
-      final problemsCorrect = int.parse(_problemsCorrectController.text);
-      final durationMinutes = int.parse(_durationMinutesController.text);
+      // Parse input values with proper error handling
+      final problemsAttemptedText = _problemsAttemptedController.text.trim();
+      final problemsCorrectText = _problemsCorrectController.text.trim();
+      final durationMinutesText = _durationMinutesController.text.trim();
+
+      final problemsAttempted = int.tryParse(problemsAttemptedText);
+      final problemsCorrect = int.tryParse(problemsCorrectText);
+      final durationMinutes = int.tryParse(durationMinutesText);
+
+      // Validate parsed values
+      if (problemsAttempted == null) {
+        throw ArgumentError('Problems attempted must be a valid number');
+      }
+      if (problemsCorrect == null) {
+        throw ArgumentError('Problems correct must be a valid number');
+      }
+      if (durationMinutes == null) {
+        throw ArgumentError('Duration must be a valid number');
+      }
 
       // Use the selected date (time is not relevant for rating algorithms)
       final sessionDateTime = DateTime(
@@ -172,8 +192,11 @@ class _AddProblemSessionPageState extends State<AddProblemSessionPage> {
         Navigator.of(context).pop();
       }
     } catch (e) {
-      // Show error message
+      // Show error message and trigger form validation to highlight errors
       if (mounted) {
+        // Trigger form validation to show field errors
+        _formKey.currentState?.validate();
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -181,6 +204,7 @@ class _AddProblemSessionPageState extends State<AddProblemSessionPage> {
                   ? 'Error updating problem session: ${e.toString()}'
                   : 'Error adding problem session: ${e.toString()}',
             ),
+            backgroundColor: Colors.red,
           ),
         );
       }
@@ -232,7 +256,7 @@ class _AddProblemSessionPageState extends State<AddProblemSessionPage> {
 
               const SizedBox(height: AppConstants.formSectionSpacing),
 
-              // Problem Statistics
+              // Manual Input Form
               const Text(
                 "Problem Statistics",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -247,6 +271,7 @@ class _AddProblemSessionPageState extends State<AddProblemSessionPage> {
                     hintText: "How many problems did you attempt?",
                   ),
                   keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   validator: (value) =>
                       _requiredNumberValidator(value, "Problems attempted"),
                   onChanged: (value) {
@@ -266,6 +291,7 @@ class _AddProblemSessionPageState extends State<AddProblemSessionPage> {
                     hintText: "How many problems did you solve correctly?",
                   ),
                   keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   validator: _problemsCorrectValidator,
                 ),
               ),
@@ -278,11 +304,12 @@ class _AddProblemSessionPageState extends State<AddProblemSessionPage> {
                     hintText: "How long did the session take?",
                   ),
                   keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   validator: (value) =>
                       _requiredNumberValidator(value, "Duration"),
                 ),
               ),
-
+              const SizedBox(height: AppConstants.spacingL),
               const SizedBox(height: 30),
 
               // Submit button

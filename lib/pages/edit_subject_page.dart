@@ -258,7 +258,9 @@ class _EditSubjectPageState extends State<EditSubjectPage> {
   }
 
   Future<void> _submitForm(BuildContext context) async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
     setState(() {
       _isSubmitting = true;
@@ -273,7 +275,7 @@ class _EditSubjectPageState extends State<EditSubjectPage> {
       }
 
       // Update subject properties
-      subject.name = _nameController.text;
+      subject.name = _nameController.text.trim();
       subject.description = _descController.text;
       subject.baseRating = int.parse(_baseRatingController.text);
       subject.maxRating = int.parse(_maxRatingController.text);
@@ -435,10 +437,16 @@ class _EditSubjectPageState extends State<EditSubjectPage> {
                   controller: _nameController,
                   decoration: const InputDecoration(labelText: "Subject Name*"),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
+                    if (value == null || value.trim().isEmpty) {
                       return 'Please enter a subject name';
                     }
                     return null;
+                  },
+                  onChanged: (value) {
+                    // Trigger validation when text changes
+                    if (_formKey.currentState != null) {
+                      _formKey.currentState!.validate();
+                    }
                   },
                 ),
               ),

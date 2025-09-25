@@ -38,10 +38,7 @@ class SessionListItem extends StatelessWidget {
                 foregroundColor: Colors.white,
                 icon: Icons.edit,
                 label: 'Edit',
-                borderRadius: const BorderRadius.only(
-                  topRight: Radius.circular(AppConstants.radiusL),
-                  bottomRight: Radius.circular(AppConstants.radiusL),
-                ),
+                borderRadius: BorderRadius.zero,
               ),
             if (onDelete != null)
               SlidableAction(
@@ -50,10 +47,7 @@ class SessionListItem extends StatelessWidget {
                 foregroundColor: Colors.white,
                 icon: Icons.delete,
                 label: 'Delete',
-                borderRadius: const BorderRadius.only(
-                  topRight: Radius.circular(AppConstants.radiusL),
-                  bottomRight: Radius.circular(AppConstants.radiusL),
-                ),
+                borderRadius: BorderRadius.zero,
               ),
           ],
         ),

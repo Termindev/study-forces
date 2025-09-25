@@ -182,7 +182,9 @@ class _AddSubjectState extends State<AddSubject> {
   }
 
   Future<void> _submitForm(BuildContext context) async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
     setState(() {
       _isSubmitting = true;
@@ -227,7 +229,7 @@ class _AddSubjectState extends State<AddSubject> {
 
       // Create subject using the constructor
       final subject = Subject()
-        ..name = _nameController.text
+        ..name = _nameController.text.trim()
         ..description = _descController.text
         ..baseRating = baseRating
         ..maxRating = maxRating
@@ -319,10 +321,16 @@ class _AddSubjectState extends State<AddSubject> {
                   controller: _nameController,
                   decoration: const InputDecoration(labelText: "Subject Name*"),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
+                    if (value == null || value.trim().isEmpty) {
                       return 'Please enter a subject name';
                     }
                     return null;
+                  },
+                  onChanged: (value) {
+                    // Trigger validation when text changes
+                    if (_formKey.currentState != null) {
+                      _formKey.currentState!.validate();
+                    }
                   },
                 ),
               ),

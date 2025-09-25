@@ -4,6 +4,7 @@ import '../stores/subject_store.dart';
 import './edit_subject_page.dart'; // We'll create this next
 import '../utils/rank_utils.dart';
 import '../widgets/rating_history_chart.dart';
+import '../models/rank.dart';
 
 class SubjectPage extends StatefulWidget {
   final int subjectId;
@@ -592,145 +593,175 @@ class _SubjectPageState extends State<SubjectPage> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      ...subject.ranks.map((rank) {
-                        final color = Color(
-                          int.parse(rank.color.replaceFirst('#', '0x')),
-                        );
-                        final isStudyRank =
-                            subject.studyEnabled &&
-                            RankUtils.getCurrentRank(
-                                  subject.studyRating,
-                                  subject.ranks,
-                                )?.id ==
-                                rank.id;
-                        final isProblemRank =
-                            subject.problemEnabled &&
-                            RankUtils.getCurrentRank(
-                                  subject.problemRating,
-                                  subject.ranks,
-                                )?.id ==
-                                rank.id;
-                        final isCurrentRank = isStudyRank || isProblemRank;
-
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: isCurrentRank
-                                ? color.withOpacity(0.1)
-                                : Colors.grey[50],
-                            border: Border.all(
-                              color: isCurrentRank ? color : Colors.grey[300]!,
-                              width: isCurrentRank ? 2 : 1,
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                            boxShadow: isCurrentRank && rank.glow
-                                ? [
-                                    BoxShadow(
-                                      color: color.withOpacity(0.3),
-                                      blurRadius: 8,
-                                      spreadRadius: 1,
-                                    ),
-                                  ]
-                                : null,
-                          ),
+                      SizedBox(
+                        height: 120, // Fixed height for horizontal scrolling
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
                           child: Row(
-                            children: [
-                              Container(
-                                width: 32,
-                                height: 32,
-                                decoration: BoxDecoration(
-                                  color: color,
-                                  borderRadius: BorderRadius.circular(16),
-                                  boxShadow: rank.glow
-                                      ? [
-                                          BoxShadow(
-                                            color: color.withOpacity(0.5),
-                                            blurRadius: 6,
-                                            spreadRadius: 1,
-                                          ),
-                                        ]
-                                      : null,
-                                ),
-                                child: const Icon(
-                                  Icons.star,
-                                  color: Colors.white,
-                                  size: 18,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
+                            children:
+                                (() {
+                                  final sortedRanks = List<Rank>.from(
+                                    subject.ranks,
+                                  );
+                                  sortedRanks.sort(
+                                    (a, b) => a.requiredRating.compareTo(
+                                      b.requiredRating,
+                                    ),
+                                  );
+                                  return sortedRanks;
+                                })().map((rank) {
+                                  final color = Color(
+                                    int.parse(
+                                      rank.color.replaceFirst('#', '0x'),
+                                    ),
+                                  );
+                                  final isStudyRank =
+                                      subject.studyEnabled &&
+                                      RankUtils.getCurrentRank(
+                                            subject.studyRating,
+                                            subject.ranks,
+                                          )?.id ==
+                                          rank.id;
+                                  final isProblemRank =
+                                      subject.problemEnabled &&
+                                      RankUtils.getCurrentRank(
+                                            subject.problemRating,
+                                            subject.ranks,
+                                          )?.id ==
+                                          rank.id;
+                                  final isCurrentRank =
+                                      isStudyRank || isProblemRank;
+
+                                  return Container(
+                                    width:
+                                        200, // Fixed width for horizontal scrolling
+                                    margin: const EdgeInsets.only(right: 8),
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: isCurrentRank
+                                          ? color.withOpacity(0.1)
+                                          : Colors.grey[800],
+                                      border: Border.all(
+                                        color: isCurrentRank
+                                            ? color
+                                            : Colors.grey[300]!,
+                                        width: isCurrentRank ? 2 : 1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                      boxShadow: isCurrentRank && rank.glow
+                                          ? [
+                                              BoxShadow(
+                                                color: color.withOpacity(0.3),
+                                                blurRadius: 8,
+                                                spreadRadius: 1,
+                                              ),
+                                            ]
+                                          : null,
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Text(
-                                          rank.name,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                            color: isCurrentRank ? color : null,
-                                          ),
+                                        Row(
+                                          children: [
+                                            Container(
+                                              width: 24,
+                                              height: 24,
+                                              decoration: BoxDecoration(
+                                                color: color,
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                boxShadow: rank.glow
+                                                    ? [
+                                                        BoxShadow(
+                                                          color: color
+                                                              .withOpacity(0.5),
+                                                          blurRadius: 6,
+                                                          spreadRadius: 1,
+                                                        ),
+                                                      ]
+                                                    : null,
+                                              ),
+                                              child: const Icon(
+                                                Icons.star,
+                                                color: Colors.white,
+                                                size: 14,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                rank.name,
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 14,
+                                                  color: isCurrentRank
+                                                      ? color
+                                                      : null,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                         if (isCurrentRank) ...[
-                                          const SizedBox(width: 8),
+                                          const SizedBox(height: 4),
                                           Container(
                                             padding: const EdgeInsets.symmetric(
-                                              horizontal: 6,
-                                              vertical: 2,
+                                              horizontal: 4,
+                                              vertical: 1,
                                             ),
                                             decoration: BoxDecoration(
                                               color: color,
                                               borderRadius:
-                                                  BorderRadius.circular(10),
+                                                  BorderRadius.circular(8),
                                             ),
                                             child: const Text(
                                               'CURRENT',
                                               style: TextStyle(
                                                 color: Colors.white,
-                                                fontSize: 10,
+                                                fontSize: 8,
                                                 fontWeight: FontWeight.bold,
                                               ),
                                             ),
                                           ),
                                         ],
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Rating: ${rank.requiredRating}',
+                                          style: TextStyle(
+                                            color: Colors.grey[400],
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                        if (rank.description.isNotEmpty) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            rank.description,
+                                            style: TextStyle(
+                                              color: Colors.grey[500],
+                                              fontSize: 10,
+                                            ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                        if (rank.glow)
+                                          const Text(
+                                            '✨ Glows',
+                                            style: TextStyle(
+                                              color: Colors.amber,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
                                       ],
                                     ),
-                                    if (rank.description.isNotEmpty) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        rank.description,
-                                        style: TextStyle(
-                                          color: Colors.grey[600],
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    ],
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Required Rating: ${rank.requiredRating}',
-                                      style: TextStyle(
-                                        color: Colors.grey[600],
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    if (rank.glow)
-                                      const Text(
-                                        '✨ Glows',
-                                        style: TextStyle(
-                                          color: Colors.amber,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                                  );
+                                }).toList(),
                           ),
-                        );
-                      }),
+                        ),
+                      ),
                     ],
                   ),
                 ),

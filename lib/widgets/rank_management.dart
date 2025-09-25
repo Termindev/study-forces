@@ -41,16 +41,19 @@ class _RankManagementWidgetState extends State<RankManagementWidget> {
     widget.onRanksChanged(_ranks);
   }
 
-  void _removeRank(int index) {
+  void _removeRank(Rank rank) {
     setState(() {
-      _ranks.removeAt(index);
+      _ranks.removeWhere((r) => r.id == rank.id);
     });
     widget.onRanksChanged(_ranks);
   }
 
-  void _updateRank(int index, Rank updatedRank) {
+  void _updateRank(Rank updatedRank) {
     setState(() {
-      _ranks[index] = updatedRank;
+      final index = _ranks.indexWhere((r) => r.id == updatedRank.id);
+      if (index != -1) {
+        _ranks[index] = updatedRank;
+      }
     });
     widget.onRanksChanged(_ranks);
   }
@@ -96,8 +99,7 @@ class _RankManagementWidgetState extends State<RankManagementWidget> {
     );
   }
 
-  void _showEditRankDialog(int index) {
-    final rank = _ranks[index];
+  void _showEditRankDialog(Rank rank) {
     final nameController = TextEditingController(text: rank.name);
     final descriptionController = TextEditingController(text: rank.description);
     final ratingController = TextEditingController(
@@ -203,7 +205,7 @@ class _RankManagementWidgetState extends State<RankManagementWidget> {
                   color: currentColor,
                   glow: glow,
                 );
-                _updateRank(index, updatedRank);
+                _updateRank(updatedRank);
                 Navigator.of(context).pop();
               },
               child: const Text('Save'),
@@ -243,8 +245,13 @@ class _RankManagementWidgetState extends State<RankManagementWidget> {
             ),
           )
         else
-          ...List.generate(_ranks.length, (index) {
-            final rank = _ranks[index];
+          ...(() {
+            final sortedRanks = List<Rank>.from(_ranks);
+            sortedRanks.sort(
+              (a, b) => a.requiredRating.compareTo(b.requiredRating),
+            );
+            return sortedRanks;
+          })().map((rank) {
             final color = Color(int.parse(rank.color.replaceFirst('#', '0x')));
 
             return Card(
@@ -291,10 +298,10 @@ class _RankManagementWidgetState extends State<RankManagementWidget> {
                   onSelected: (value) {
                     switch (value) {
                       case 'edit':
-                        _showEditRankDialog(index);
+                        _showEditRankDialog(rank);
                         break;
                       case 'delete':
-                        _removeRank(index);
+                        _removeRank(rank);
                         break;
                     }
                   },

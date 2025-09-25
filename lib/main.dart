@@ -6,11 +6,15 @@ import 'stores/subject_store.dart';
 import 'theme/app_theme.dart';
 import 'routes/app_shell.dart';
 
+// Global ObjectBox instance for data export/import
+ObjectBox? globalObjectBox;
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize ObjectBox before runApp
   final objectBox = await ObjectBox.create();
+  globalObjectBox = objectBox; // Set global instance
 
   runApp(MyApp(objectBox: objectBox));
 }
