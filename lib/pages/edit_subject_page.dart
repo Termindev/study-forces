@@ -106,8 +106,12 @@ class _EditSubjectPageState extends State<EditSubjectPage> {
           .toString(), // Convert seconds to minutes
     );
 
-    // Initialize ranks
-    _ranks = List.from(subject.ranks);
+    // Initialize ranks - work directly with subject ranks, no copies
+    _ranks = subject.ranks;
+    print('DEBUG: Initialized ${_ranks.length} ranks:');
+    for (final rank in _ranks) {
+      print('DEBUG: Rank ${rank.id}: ${rank.name} (${rank.requiredRating})');
+    }
   }
 
   @override
@@ -258,10 +262,13 @@ class _EditSubjectPageState extends State<EditSubjectPage> {
   }
 
   Future<void> _submitForm(BuildContext context) async {
+    print('DEBUG: _submitForm called');
     if (!_formKey.currentState!.validate()) {
+      print('DEBUG: Form validation failed');
       return;
     }
 
+    print('DEBUG: Form validation passed, starting submission');
     setState(() {
       _isSubmitting = true;
     });
@@ -288,19 +295,10 @@ class _EditSubjectPageState extends State<EditSubjectPage> {
       subject.studyEnabled = _studyEnabled;
       subject.problemEnabled = _problemEnabled;
 
-      // Update ranks
-      subject.ranks.clear();
-      for (final rank in _ranks) {
-        // Create a new rank with proper ID assignment
-        final newRank = Rank.create(
-          requiredRating: rank.requiredRating,
-          name: rank.name,
-          description: rank.description,
-          color: rank.color,
-          glow: rank.glow,
-        );
-        subject.ranks.add(newRank);
-      }
+      // DON'T UPDATE RANKS HERE AT ALL
+      // The rank management widget should update the actual subject ranks directly
+      // We're not going to mess with the ToMany relationship
+      print('DEBUG: Skipping rank update - ranks should already be updated');
 
       // Update study properties
       if (_studyEnabled) {
@@ -500,6 +498,14 @@ class _EditSubjectPageState extends State<EditSubjectPage> {
               RankManagementWidget(
                 ranks: _ranks,
                 onRanksChanged: (ranks) {
+                  print(
+                    'DEBUG: onRanksChanged called with ${ranks.length} ranks',
+                  );
+                  for (final rank in ranks) {
+                    print(
+                      'DEBUG: Rank ${rank.id}: ${rank.name} (${rank.requiredRating})',
+                    );
+                  }
                   setState(() {
                     _ranks = ranks;
                   });

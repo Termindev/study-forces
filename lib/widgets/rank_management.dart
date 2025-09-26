@@ -17,13 +17,8 @@ class RankManagementWidget extends StatefulWidget {
 }
 
 class _RankManagementWidgetState extends State<RankManagementWidget> {
-  late List<Rank> _ranks;
-
-  @override
-  void initState() {
-    super.initState();
-    _ranks = List.from(widget.ranks);
-  }
+  // Work directly with the widget's ranks - no local copies
+  List<Rank> get _ranks => widget.ranks;
 
   void _addRank() {
     setState(() {
@@ -43,17 +38,17 @@ class _RankManagementWidgetState extends State<RankManagementWidget> {
 
   void _removeRank(Rank rank) {
     setState(() {
-      _ranks.removeWhere((r) => r.id == rank.id);
+      _ranks.remove(rank);
     });
     widget.onRanksChanged(_ranks);
   }
 
-  void _updateRank(Rank updatedRank) {
+  void _updateRank(Rank rankToUpdate) {
     setState(() {
-      final index = _ranks.indexWhere((r) => r.id == updatedRank.id);
-      if (index != -1) {
-        _ranks[index] = updatedRank;
-      }
+      // The rank object is already updated in the dialog - just notify parent
+      print(
+        'DEBUG: Rank updated: ${rankToUpdate.name} (${rankToUpdate.requiredRating})',
+      );
     });
     widget.onRanksChanged(_ranks);
   }
@@ -197,15 +192,16 @@ class _RankManagementWidgetState extends State<RankManagementWidget> {
             ),
             TextButton(
               onPressed: () {
-                final updatedRank = Rank.create(
-                  id: rank.id,
-                  requiredRating: int.tryParse(ratingController.text) ?? 0,
-                  name: nameController.text,
-                  description: descriptionController.text,
-                  color: currentColor,
-                  glow: glow,
+                // Update the existing rank object directly
+                rank.requiredRating = int.tryParse(ratingController.text) ?? 0;
+                rank.name = nameController.text;
+                rank.description = descriptionController.text;
+                rank.color = currentColor;
+                rank.glow = glow;
+                print(
+                  'DEBUG: Updated rank directly: ${rank.name} (${rank.requiredRating})',
                 );
-                _updateRank(updatedRank);
+                _updateRank(rank);
                 Navigator.of(context).pop();
               },
               child: const Text('Save'),
@@ -250,87 +246,95 @@ class _RankManagementWidgetState extends State<RankManagementWidget> {
             sortedRanks.sort(
               (a, b) => a.requiredRating.compareTo(b.requiredRating),
             );
-            return sortedRanks;
-          })().map((rank) {
-            final color = Color(int.parse(rank.color.replaceFirst('#', '0x')));
+            return sortedRanks.asMap().entries.map((entry) {
+              final index = entry.key;
+              final rank = entry.value;
+              final color = Color(
+                int.parse(rank.color.replaceFirst('#', '0x')),
+              );
 
-            return Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: rank.glow
-                        ? [
-                            BoxShadow(
-                              color: color.withValues(alpha: 0.5),
-                              blurRadius: 8,
-                              spreadRadius: 2,
-                            ),
-                          ]
-                        : null,
+              return Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: rank.glow
+                          ? [
+                              BoxShadow(
+                                color: color.withValues(alpha: 0.5),
+                                blurRadius: 8,
+                                spreadRadius: 2,
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: const Icon(
+                      Icons.star,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                   ),
-                  child: const Icon(Icons.star, color: Colors.white, size: 20),
-                ),
-                title: Text(
-                  rank.name,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (rank.description.isNotEmpty) Text(rank.description),
-                    Text(
-                      'Required Rating: ${rank.requiredRating}',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    if (rank.glow)
-                      const Text(
-                        '✨ Glows',
-                        style: TextStyle(fontSize: 12, color: Colors.amber),
+                  title: Text(
+                    rank.name,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (rank.description.isNotEmpty) Text(rank.description),
+                      Text(
+                        'Required Rating: ${rank.requiredRating}',
+                        style: const TextStyle(fontSize: 12),
                       ),
-                  ],
-                ),
-                trailing: PopupMenuButton<String>(
-                  onSelected: (value) {
-                    switch (value) {
-                      case 'edit':
-                        _showEditRankDialog(rank);
-                        break;
-                      case 'delete':
-                        _removeRank(rank);
-                        break;
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: Row(
-                        children: [
-                          Icon(Icons.edit, size: 20),
-                          SizedBox(width: 8),
-                          Text('Edit'),
-                        ],
+                      if (rank.glow)
+                        const Text(
+                          '✨ Glows',
+                          style: TextStyle(fontSize: 12, color: Colors.amber),
+                        ),
+                    ],
+                  ),
+                  trailing: PopupMenuButton<String>(
+                    onSelected: (value) {
+                      switch (value) {
+                        case 'edit':
+                          _showEditRankDialog(rank);
+                          break;
+                        case 'delete':
+                          _removeRank(rank);
+                          break;
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit, size: 20),
+                            SizedBox(width: 8),
+                            Text('Edit'),
+                          ],
+                        ),
                       ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete, size: 20, color: Colors.red),
-                          SizedBox(width: 8),
-                          Text('Delete', style: TextStyle(color: Colors.red)),
-                        ],
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete, size: 20, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text('Delete', style: TextStyle(color: Colors.red)),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            );
-          }),
+              );
+            });
+          })(),
       ],
     );
   }

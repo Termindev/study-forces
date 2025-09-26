@@ -6,11 +6,14 @@ import '../objectbox.dart';
 import '../models/subject.dart';
 import '../models/study_session.dart';
 import '../models/problem_session.dart';
+import '../models/rank.dart';
 
 class SubjectStore extends ChangeNotifier {
   late final Box<Subject> subjectBox;
   late final Box<ProblemSession> problemSessionBox;
   late final Box<StudySession> studySessionBox;
+  late final Box<Rank> rankBox;
+  late final ObjectBox objectBox;
   List<Subject> subjects = [];
   bool loading = true;
   String? error;
@@ -18,9 +21,11 @@ class SubjectStore extends ChangeNotifier {
   StreamSubscription<Query<Subject>>? _subs;
 
   SubjectStore(ObjectBox objectBox) {
+    this.objectBox = objectBox;
     subjectBox = objectBox.subjectBox;
     problemSessionBox = objectBox.problemSessionBox;
     studySessionBox = objectBox.studySessionBox;
+    rankBox = objectBox.rankBox;
     _init();
   }
 
@@ -28,7 +33,7 @@ class SubjectStore extends ChangeNotifier {
     // Load initial data
     subjects = subjectBox.getAll();
     print('DEBUG: Loaded ${subjects.length} subjects from database');
-    
+
     // Fix any subjects with empty names
     bool needsUpdate = false;
     for (int i = 0; i < subjects.length; i++) {
@@ -41,12 +46,12 @@ class SubjectStore extends ChangeNotifier {
         needsUpdate = true;
       }
     }
-    
+
     if (needsUpdate) {
       print('DEBUG: Updating subjects with fixed names');
       subjectBox.putMany(subjects);
     }
-    
+
     loading = false;
     notifyListeners();
 
@@ -379,20 +384,35 @@ class SubjectStore extends ChangeNotifier {
         orElse: () => throw StateError('Study session not found'),
       );
 
-      // Check if session has been processed
-      if (session.applied) {
-        // If processed, reset and recalculate everything
+      print(
+        'DEBUG: Deleting study session ${session.id}, applied: ${session.applied}',
+      );
+
+      // Check if this deletion affects processed sessions
+      final sessionDate = session.when;
+      final shouldRecalculate =
+          session.applied ||
+          _isSessionBeforeProcessed(subject, sessionDate, true);
+
+      // Simply remove from the ToMany relationship - ObjectBox will handle the rest
+      subject.studySessions.removeWhere((s) => s.id == sessionId);
+      print('DEBUG: Removed session from subject.studySessions');
+
+      // Reset and recalculate if this affects processed data
+      if (shouldRecalculate) {
+        print(
+          'DEBUG: Session affects processed data, resetting and recalculating',
+        );
         subject.resetAndRecalculateStudy();
-      } else {
-        // If not processed, just remove the session
-        subject.studySessions.removeWhere((s) => s.id == sessionId);
       }
 
       subjectBox.put(subject);
       notifyListeners();
 
+      print('DEBUG: Study session deleted successfully');
       return subject;
     } catch (e) {
+      print('DEBUG: Error deleting study session: $e');
       error = e.toString();
       rethrow;
     }
@@ -411,20 +431,35 @@ class SubjectStore extends ChangeNotifier {
         orElse: () => throw StateError('Problem session not found'),
       );
 
-      // Check if session has been processed
-      if (session.applied) {
-        // If processed, reset and recalculate everything
+      print(
+        'DEBUG: Deleting problem session ${session.id}, applied: ${session.applied}',
+      );
+
+      // Check if this deletion affects processed sessions
+      final sessionDate = session.when;
+      final shouldRecalculate =
+          session.applied ||
+          _isSessionBeforeProcessed(subject, sessionDate, false);
+
+      // Simply remove from the ToMany relationship - ObjectBox will handle the rest
+      subject.problemSessions.removeWhere((p) => p.id == sessionId);
+      print('DEBUG: Removed session from subject.problemSessions');
+
+      // Reset and recalculate if this affects processed data
+      if (shouldRecalculate) {
+        print(
+          'DEBUG: Session affects processed data, resetting and recalculating',
+        );
         subject.resetAndRecalculateProblem();
-      } else {
-        // If not processed, just remove the session
-        subject.problemSessions.removeWhere((p) => p.id == sessionId);
       }
 
       subjectBox.put(subject);
       notifyListeners();
 
+      print('DEBUG: Problem session deleted successfully');
       return subject;
     } catch (e) {
+      print('DEBUG: Error deleting problem session: $e');
       error = e.toString();
       rethrow;
     }
@@ -576,7 +611,9 @@ class SubjectStore extends ChangeNotifier {
     StudySession updated,
   ) async {
     try {
-      print('DEBUG: editStudySessionSmartWithDateCheck called with sessionId: $sessionId');
+      print(
+        'DEBUG: editStudySessionSmartWithDateCheck called with sessionId: $sessionId',
+      );
       final subject = subjectBox.get(subjectId);
       if (subject == null) throw StateError('Subject not found');
 
@@ -585,33 +622,46 @@ class SubjectStore extends ChangeNotifier {
         (s) => s.id == sessionId,
         orElse: () => throw StateError('Study session not found'),
       );
-      print('DEBUG: Found existing study session: ${existingSession.toString()}');
+      print(
+        'DEBUG: Found existing study session: ${existingSession.toString()}',
+      );
 
-      // Check if the new date falls within already processed ranges
-      if (_shouldReprocessStudyFromDate(subject, updated.when)) {
-        print('DEBUG: Reprocessing study from date ${updated.when}');
-        // Update the session
-        final idx = subject.studySessions.indexWhere((s) => s.id == sessionId);
-        print('DEBUG: Updating study session at index $idx');
-        subject.studySessions[idx] = updated;
-        // Then reset and recalculate everything
-        subject.resetAndRecalculateStudyFromDate(updated.when);
+      // Check if this edit affects processed sessions
+      final oldDate = existingSession.when;
+      final newDate = updated.when;
+      final shouldRecalculate =
+          existingSession.applied ||
+          _isSessionBeforeProcessed(subject, oldDate, true) ||
+          _isSessionBeforeProcessed(subject, newDate, true) ||
+          _shouldReprocessStudyFromDate(subject, newDate);
+
+      // Update the session
+      final idx = subject.studySessions.indexWhere((s) => s.id == sessionId);
+      print('DEBUG: Updating study session at index $idx');
+      subject.studySessions[idx] = updated;
+
+      // Reset and recalculate if this affects processed data
+      if (shouldRecalculate) {
+        print(
+          'DEBUG: Edit affects processed data, resetting and recalculating',
+        );
+        subject.resetAndRecalculateStudy();
       } else {
         print('DEBUG: Normal study edit - no reprocessing needed');
-        // Normal edit - just update the session
-        final idx = subject.studySessions.indexWhere((s) => s.id == sessionId);
-        print('DEBUG: Updating study session at index $idx');
-        subject.studySessions[idx] = updated;
       }
 
       print('DEBUG: Saving subject to database');
       subjectBox.put(subject);
-      
+
       // Also save the updated session to its own box to ensure it's persisted
-      final updatedSession = subject.studySessions.firstWhere((s) => s.id == sessionId);
-      print('DEBUG: Saving updated study session to study session box: ${updatedSession.toString()}');
+      final updatedSession = subject.studySessions.firstWhere(
+        (s) => s.id == sessionId,
+      );
+      print(
+        'DEBUG: Saving updated study session to study session box: ${updatedSession.toString()}',
+      );
       studySessionBox.put(updatedSession);
-      
+
       notifyListeners();
 
       return subject;
@@ -640,25 +690,28 @@ class SubjectStore extends ChangeNotifier {
       );
       print('DEBUG: Found existing session: ${existingSession.toString()}');
 
-      // Check if the new date falls within already processed ranges
-      if (_shouldReprocessProblemFromDate(subject, updated.when)) {
-        print('DEBUG: Reprocessing from date ${updated.when}');
-        // Update the session
-        final idx = subject.problemSessions.indexWhere(
-          (p) => p.id == sessionId,
+      // Check if this edit affects processed sessions
+      final oldDate = existingSession.when;
+      final newDate = updated.when;
+      final shouldRecalculate =
+          existingSession.applied ||
+          _isSessionBeforeProcessed(subject, oldDate, false) ||
+          _isSessionBeforeProcessed(subject, newDate, false) ||
+          _shouldReprocessProblemFromDate(subject, newDate);
+
+      // Update the session
+      final idx = subject.problemSessions.indexWhere((p) => p.id == sessionId);
+      print('DEBUG: Updating problem session at index $idx');
+      subject.problemSessions[idx] = updated;
+
+      // Reset and recalculate if this affects processed data
+      if (shouldRecalculate) {
+        print(
+          'DEBUG: Edit affects processed data, resetting and recalculating',
         );
-        print('DEBUG: Updating session at index $idx');
-        subject.problemSessions[idx] = updated;
-        // Then reset and recalculate everything
-        subject.resetAndRecalculateProblemFromDate(updated.when);
+        subject.resetAndRecalculateProblem();
       } else {
-        print('DEBUG: Normal edit - no reprocessing needed');
-        // Normal edit - just update the session
-        final idx = subject.problemSessions.indexWhere(
-          (p) => p.id == sessionId,
-        );
-        print('DEBUG: Updating session at index $idx');
-        subject.problemSessions[idx] = updated;
+        print('DEBUG: Normal problem edit - no reprocessing needed');
       }
 
       print('DEBUG: Saving subject to database');
@@ -699,5 +752,20 @@ class SubjectStore extends ChangeNotifier {
     // Check if the session date is before or equal to the last processed date
     return sessionDate.isBefore(subject.lastProcessedProblems!) ||
         sessionDate.isAtSameMomentAs(subject.lastProcessedProblems!);
+  }
+
+  // Helper method to check if a session is before any processed sessions
+  bool _isSessionBeforeProcessed(
+    Subject subject,
+    DateTime sessionDate,
+    bool isStudy,
+  ) {
+    if (isStudy) {
+      if (subject.lastProcessedStudy == null) return false;
+      return sessionDate.isBefore(subject.lastProcessedStudy!);
+    } else {
+      if (subject.lastProcessedProblems == null) return false;
+      return sessionDate.isBefore(subject.lastProcessedProblems!);
+    }
   }
 }

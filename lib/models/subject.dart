@@ -203,25 +203,41 @@ class Subject {
   /// Returns a percentage value (0-100) representing the percentage of rating to lose
   double getNegativeStreakMultiplier(int daysWithoutStreak) {
     if (daysWithoutStreak <= 0) return 0.0;
-    final result =
-        log(1 + daysWithoutStreak) / 3; // Changed from /6 to /3 for higher loss
-    return result * 100; // Convert to percentage (0-100)
+    final result = log(1 + daysWithoutStreak) / 6; // More gentle loss curve
+    return min(result * 100, 25.0); // Cap at 25% loss per hit
   }
 
   /// Processes windows from `lastProcessedStudy` (or the first session date)
   /// up to `asOf`, consuming only unapplied sessions. Sessions that contributed
   /// to a processed window are marked `applied = true`.
   void applyStudyRateChanges(DateTime asOf) {
-    if (!studyEnabled || studySessions.isEmpty) return;
-    if (studyFrequency <= 0) return; // guard
+    if (!studyEnabled || studySessions.isEmpty) {
+      print(
+        'DEBUG: Skipping study rate changes - studyEnabled: $studyEnabled, sessions: ${studySessions.length}',
+      );
+      return;
+    }
+    if (studyFrequency <= 0) {
+      print(
+        'DEBUG: Skipping study rate changes - invalid frequency: $studyFrequency',
+      );
+      return; // guard
+    }
 
     DateTime processingDate = lastProcessedStudy ?? _firstStudySessionDate();
+    print('DEBUG: Starting study processing from: $processingDate to: $asOf');
 
+    int windowCount = 0;
     while (true) {
       final windowEnd = processingDate.add(Duration(days: studyFrequency));
 
       // Only process full windows (windowEnd must be <= asOf)
-      if (windowEnd.isAfter(asOf)) break;
+      if (windowEnd.isAfter(asOf)) {
+        print('DEBUG: Stopping at window end: $windowEnd (after asOf: $asOf)');
+        break;
+      }
+
+      windowCount++;
 
       // collect unapplied sessions within this window
       final sessionsInWindow = studySessions
@@ -233,6 +249,10 @@ class Subject {
           )
           .toList();
 
+      print(
+        'DEBUG: Window ${windowCount}: ${processingDate} to ${windowEnd}, found ${sessionsInWindow.length} sessions',
+      );
+
       // calculate performance for those sessions
       final totalUnits = sessionsInWindow.fold<double>(
         0,
@@ -242,11 +262,48 @@ class Subject {
           ? 0
           : (totalUnits / studyGoalMax) * maxRating;
 
-      double deltaR = (performance - studyRating) / studyRatingConstant;
-
       // Use the calculated streak for the multiplier, not the stored streak
       final currentStreak = calculateStudyStreak();
       final daysWithoutStreak = calculateDaysWithoutStudyStreak();
+
+      // Handle empty windows (no study sessions) - apply streak decay
+      if (totalUnits == 0) {
+        if (studyStreak > 0) {
+          // First miss after a streak - apply first hit loss
+          final firstHitLoss =
+              (getStreakMultiplier(studyStreak) * studyRating / 250).round();
+          final minLoss = max(1, studyRating * 0.05).round();
+          final actualLoss = max(minLoss, firstHitLoss);
+          studyRating = max(baseRating, studyRating - actualLoss);
+          studyStreak = 0; // Reset streak
+          print(
+            'DEBUG: Applied first hit loss for missed study day: $actualLoss',
+          );
+        } else {
+          // Continued missing - apply negative streak multiplier
+          final sMinus = getNegativeStreakMultiplier(daysWithoutStreak);
+          final lossPercentage = min(sMinus, 25.0); // Cap loss at 25% per hit
+          final newRating = (studyRating * (100 - lossPercentage) / 100)
+              .round();
+          final loss = studyRating - newRating;
+          studyRating = max(baseRating, newRating - max(0, 1 - loss));
+          print(
+            'DEBUG: Applied negative streak decay for missed study day: ${lossPercentage}%',
+          );
+        }
+        studyStreak = min(-1, studyStreak - 1);
+
+        // Add rating history and advance
+        studyRating = studyRating.clamp(baseRating, 999999999);
+        studyRatingHistory.add(
+          RatingLog.create(when: windowEnd, rating: studyRating),
+        );
+        lastProcessedStudy = windowEnd;
+        processingDate = windowEnd;
+        continue;
+      }
+
+      double deltaR = (performance - studyRating) / studyRatingConstant;
 
       if (performance >= studyGoalMin) {
         // Positive performance - use streak multiplier
@@ -256,19 +313,26 @@ class Subject {
       } else {
         // Negative performance - check if we need to apply no-streak rate-loss
         if (studyStreak > 0) {
-          // First hit: apply S_{m+} × R_current / 125
+          // First hit: apply S_{m+} × R_current / 250 (less aggressive), but ensure minimum rating
           final firstHitLoss =
-              (getStreakMultiplier(studyStreak) * studyRating / 125).round();
-          studyRating -= firstHitLoss;
+              (getStreakMultiplier(studyStreak) * studyRating / 250).round();
+          final minLoss = max(
+            1,
+            studyRating * 0.05,
+          ).round(); // At least 5% but not less than 1
+          final actualLoss = max(minLoss, firstHitLoss);
+          studyRating = max(baseRating, studyRating - actualLoss);
           studyStreak = 0; // Reset streak
         } else {
           // Subsequent hits: apply R_current × (100 - S_{m-}) / 100
           // This means we keep (100 - S_{m-})% of the rating, losing S_{m-}%
           final sMinus = getNegativeStreakMultiplier(daysWithoutStreak);
-          final newRating = (studyRating * (100 - sMinus) / 100).round();
+          final lossPercentage = min(sMinus, 50.0); // Cap loss at 50% per hit
+          final newRating = (studyRating * (100 - lossPercentage) / 100)
+              .round();
           final loss = studyRating - newRating;
-          // Ensure minimum loss of 1 point
-          studyRating = newRating - max(0, 1 - loss);
+          // Ensure minimum loss of 1 point, but don't let rating go below baseRating
+          studyRating = max(baseRating, newRating - max(0, 1 - loss));
           // Apply rating decay for missed study days
         }
         studyStreak = min(-1, studyStreak - 1);
@@ -282,11 +346,27 @@ class Subject {
       // mark sessions that contributed as applied so they won't be counted again
       for (final s in sessionsInWindow) {
         s.applied = true;
+        print('DEBUG: Marked study session ${s.id} as applied');
       }
 
       // advance to the end of this processed window (guaranteed <= asOf)
       lastProcessedStudy = windowEnd;
       processingDate = windowEnd;
+    }
+
+    print(
+      'DEBUG: Completed study processing - processed $windowCount windows, final rating: $studyRating',
+    );
+
+    // Check for any unprocessed sessions that might have been missed
+    final unprocessedSessions = studySessions.where((s) => !s.applied).toList();
+    if (unprocessedSessions.isNotEmpty) {
+      print(
+        'DEBUG: WARNING - Found ${unprocessedSessions.length} unprocessed study sessions',
+      );
+      for (final session in unprocessedSessions) {
+        print('DEBUG: Unprocessed session ${session.id}: ${session.when}');
+      }
     }
   }
 
@@ -294,17 +374,35 @@ class Subject {
   /// Only processes a window when its end is <= asOf, so lastProcessedProblems
   /// never moves into the future.
   void applyProblemRateChanges(DateTime asOf) {
-    if (!problemEnabled || problemSessions.isEmpty) return;
-    if (problemFrequency <= 0) return; // guard
+    if (!problemEnabled || problemSessions.isEmpty) {
+      print(
+        'DEBUG: Skipping problem rate changes - problemEnabled: $problemEnabled, sessions: ${problemSessions.length}',
+      );
+      return;
+    }
+    if (problemFrequency <= 0) {
+      print(
+        'DEBUG: Skipping problem rate changes - invalid frequency: $problemFrequency',
+      );
+      return; // guard
+    }
 
     DateTime processingDate =
         lastProcessedProblems ?? _firstProblemSessionDate();
+    print('DEBUG: Starting problem processing from: $processingDate to: $asOf');
+
+    int windowCount = 0;
 
     while (true) {
       final windowEnd = processingDate.add(Duration(days: problemFrequency));
 
       // Only process complete windows
-      if (windowEnd.isAfter(asOf)) break;
+      if (windowEnd.isAfter(asOf)) {
+        print('DEBUG: Stopping at window end: $windowEnd (after asOf: $asOf)');
+        break;
+      }
+
+      windowCount++;
 
       // collect unapplied sessions in window
       final sessionsInWindow = problemSessions
@@ -315,6 +413,10 @@ class Subject {
                 !s.applied,
           )
           .toList();
+
+      print(
+        'DEBUG: Window ${windowCount}: ${processingDate} to ${windowEnd}, found ${sessionsInWindow.length} sessions',
+      );
 
       // aggregate metrics
       int totalAttempted = 0;
@@ -330,7 +432,39 @@ class Subject {
       // defensive checks
       final bool invalidGoals = problemGoalMax == 0 || problemTimeGoal == 0;
       if (invalidGoals || totalAttempted == 0) {
-        // Add a rating history entry (unchanged rating) and advance.
+        // No problem sessions in this window - apply negative streak decay
+        if (totalAttempted == 0) {
+          // Calculate days without problem solving for streak decay
+          final daysWithoutStreak = calculateDaysWithoutProblemStreak();
+
+          if (problemStreak > 0) {
+            // First miss after a streak - apply first hit loss
+            final firstHitLoss =
+                (getStreakMultiplier(problemStreak) * problemRating / 250)
+                    .round();
+            final minLoss = max(1, problemRating * 0.05).round();
+            final actualLoss = max(minLoss, firstHitLoss);
+            problemRating = max(baseRating, problemRating - actualLoss);
+            problemStreak = 0; // Reset streak
+            print(
+              'DEBUG: Applied first hit loss for missed problem day: $actualLoss',
+            );
+          } else {
+            // Continued missing - apply negative streak multiplier
+            final sMinus = getNegativeStreakMultiplier(daysWithoutStreak);
+            final lossPercentage = min(sMinus, 25.0); // Cap loss at 25% per hit
+            final newRating = (problemRating * (100 - lossPercentage) / 100)
+                .round();
+            final loss = problemRating - newRating;
+            problemRating = max(baseRating, newRating - max(0, 1 - loss));
+            print(
+              'DEBUG: Applied negative streak decay for missed problem day: ${lossPercentage}%',
+            );
+          }
+          problemStreak = min(-1, problemStreak - 1);
+        }
+
+        // Add a rating history entry and advance.
         problemRatingHistory.add(
           RatingLog.create(when: windowEnd, rating: problemRating),
         );
@@ -374,20 +508,27 @@ class Subject {
       } else {
         // Negative performance - check if we need to apply no-streak rate-loss
         if (problemStreak > 0) {
-          // First hit: apply S_{m+} × R_current / 125
+          // First hit: apply S_{m+} × R_current / 250 (less aggressive), but ensure minimum rating
           final firstHitLoss =
-              (getStreakMultiplier(problemStreak) * problemRating / 125)
+              (getStreakMultiplier(problemStreak) * problemRating / 250)
                   .round();
-          problemRating -= firstHitLoss;
+          final minLoss = max(
+            1,
+            problemRating * 0.05,
+          ).round(); // At least 5% but not less than 1
+          final actualLoss = max(minLoss, firstHitLoss);
+          problemRating = max(baseRating, problemRating - actualLoss);
           problemStreak = 0; // Reset streak
         } else {
           // Subsequent hits: apply R_current × (100 - S_{m-}) / 100
           // This means we keep (100 - S_{m-})% of the rating, losing S_{m-}%
           final sMinus = getNegativeStreakMultiplier(daysWithoutStreak);
-          final newRating = (problemRating * (100 - sMinus) / 100).round();
+          final lossPercentage = min(sMinus, 50.0); // Cap loss at 50% per hit
+          final newRating = (problemRating * (100 - lossPercentage) / 100)
+              .round();
           final loss = problemRating - newRating;
-          // Ensure minimum loss of 1 point
-          problemRating = newRating - max(0, 1 - loss);
+          // Ensure minimum loss of 1 point, but don't let rating go below baseRating
+          problemRating = max(baseRating, newRating - max(0, 1 - loss));
         }
         problemStreak = min(-1, problemStreak - 1);
       }
@@ -400,38 +541,68 @@ class Subject {
       // mark sessions that contributed as applied
       for (final s in sessionsInWindow) {
         s.applied = true;
+        print('DEBUG: Marked problem session ${s.id} as applied');
       }
 
       // advance to the end of this processed window (guaranteed <= asOf)
       lastProcessedProblems = windowEnd;
       processingDate = windowEnd;
     }
+
+    print(
+      'DEBUG: Completed problem processing - processed $windowCount windows, final rating: $problemRating',
+    );
+
+    // Check for any unprocessed sessions that might have been missed
+    final unprocessedSessions = problemSessions
+        .where((s) => !s.applied)
+        .toList();
+    if (unprocessedSessions.isNotEmpty) {
+      print(
+        'DEBUG: WARNING - Found ${unprocessedSessions.length} unprocessed problem sessions',
+      );
+      for (final session in unprocessedSessions) {
+        print('DEBUG: Unprocessed session ${session.id}: ${session.when}');
+      }
+    }
   }
 
   void resetAndRecalculateStudy() {
+    print('DEBUG: Resetting and recalculating study sessions');
     studyRating = baseRating;
     studyStreak = 0;
     lastProcessedStudy = null;
     studyRatingHistory.clear();
 
+    // Mark all sessions as unapplied
     for (final session in studySessions) {
       session.applied = false;
+      print('DEBUG: Reset study session ${session.id} applied status');
     }
 
-    applyStudyRateChanges(DateTime.now());
+    // Process all sessions up to now
+    applyStudyRateChanges(DateTime.now().add(Duration(days: 1)));
+    print('DEBUG: Study recalculation completed - final rating: $studyRating');
   }
 
   void resetAndRecalculateProblem() {
+    print('DEBUG: Resetting and recalculating problem sessions');
     problemRating = baseRating;
     problemStreak = 0;
     lastProcessedProblems = null;
     problemRatingHistory.clear();
 
+    // Mark all sessions as unapplied
     for (final session in problemSessions) {
       session.applied = false;
+      print('DEBUG: Reset problem session ${session.id} applied status');
     }
 
-    applyProblemRateChanges(DateTime.now());
+    // Process all sessions up to now
+    applyProblemRateChanges(DateTime.now().add(Duration(days: 1)));
+    print(
+      'DEBUG: Problem recalculation completed - final rating: $problemRating',
+    );
   }
 
   /// Smart reset and recalculate for study sessions from a specific date
