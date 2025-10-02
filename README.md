@@ -79,6 +79,7 @@ $$
 $$
 \text{Rating Change}=\triangle R \times S_{m+}
 $$
+
 **Negative change**:
 
 $$
