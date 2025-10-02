@@ -106,7 +106,7 @@ $$
 \triangle R = R_\text{current}\times(100-S_{m-})
 $$
 
-So everyday, you'd lose \%$S_{m-}$ of your rating, until you revive your streak.
+So everyday, you'd lose \% $S_{m-}$ of your rating, until you revive your streak.
 
 ---
 # DS Planning
