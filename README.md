@@ -51,6 +51,7 @@ $$
 $$
 
 Where:
+
 - $P_t$ = problems attempted  
 - $P_g$ = goal problems (for the frequency)  
 - $t_g$ = expected time per problem (goal)  
@@ -61,6 +62,7 @@ Where:
 
 ## Rating change
 At the end of each **frequency window**:
+
 $$
 \Delta R = \frac{R_\text{performance} - R_\text{current}}{C_f}
 $$
@@ -73,6 +75,7 @@ $$
 ## Final Rating Change formulas
 ### Rating changes with an ongoing streak
 **Positive change:**
+
 $$
 \text{Rating Change}=\triangle R \times S_{m+}
 $$
@@ -84,18 +87,24 @@ $$
 
 ### No-streak rate-loss
 **First hit:**
+
 $$
 \triangle R = \frac{S_{m+} \times R_\text{current}}{125}
 $$
+
 After the first hit, $S_{m+}$ will be reset and no longer will be used to infect rating losses, however, a new variable, $S_{m-}$ will take control, which is defined by the formula:
+
 $$
 S_{m-}=\frac{\log_{10}\left(1+\text{days without streak}\right)}{6}
 $$
+
 It grows daily, regardless of what the frequency of the goal is, that is because every day without a streak is a chance you've missed to revive your streak.
 Change for next hits will be calculated using this formula:
+
 $$
 \triangle R = R_\text{current}\times(100-S_{m-})
 $$
+
 So everyday, you'd lose \%$S_{m-}$ of your rating, until you revive your streak.
 
 ---
